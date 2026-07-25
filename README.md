@@ -1,24 +1,56 @@
+# L298 Motor สำหรับ micro:bit
 
-> Open this page at [https://vinzent29.github.io/inc172-motor-drive/](https://vinzent29.github.io/inc172-motor-drive/)
+บล็อกควบคุมมอเตอร์ DC 2 ตัวผ่านโมดูล L298N สำหรับใช้ในห้องเรียน
 
-## Use as Extension
+## การต่อวงจร
 
-This repository can be added as an **extension** in MakeCode.
+ใส่ jumper ค้างไว้ที่ **ENA** และ **ENB** บนโมดูล แล้วคุมความเร็วด้วย PWM ที่ขา IN โดยตรง
 
-* open [https://makecode.microbit.org/](https://makecode.microbit.org/)
-* click on **New Project**
-* click on **Extensions** under the gearwheel menu
-* search for **https://github.com/vinzent29/inc172-motor-drive** and import
+| L298N | micro:bit (ค่าเริ่มต้น) | หน้าที่ |
+|-------|------------------------|--------|
+| IN1 | P13 | ล้อซ้าย เดินหน้า |
+| IN2 | P14 | ล้อซ้าย ถอยหลัง |
+| IN3 | P15 | ล้อขวา เดินหน้า |
+| IN4 | P16 | ล้อขวา ถอยหลัง |
+| GND | GND | ต้องต่อร่วมเสมอ |
 
-## Edit this project
+หมายเหตุ: อย่าจ่ายไฟมอเตอร์จากขา 3V ของ micro:bit และอย่าต่อขา V ของ Sensor:bit เข้ากับ L298
 
-To edit this repository in MakeCode.
+## ตัวอย่าง
 
-* open [https://makecode.microbit.org/](https://makecode.microbit.org/)
-* click on **Import** then click on **Import URL**
-* paste **https://github.com/vinzent29/inc172-motor-drive** and click import
+```blocks
+l298.setup(DigitalPin.P13, DigitalPin.P14, DigitalPin.P15, DigitalPin.P16)
+l298.forward(60)
+basic.pause(1000)
+l298.stop()
+```
 
-#### Metadata (used for search, rendering)
+## รายการบล็อก
+
+### เริ่มต้น
+- `ตั้งค่ามอเตอร์ IN1 .. IN2 .. IN3 .. IN4 ..` วางไว้ใน on start
+
+### ขับเคลื่อน
+- `เดินหน้า ความเร็ว %`
+- `ถอยหลัง ความเร็ว %`
+- `เลี้ยวซ้าย ความเร็ว %` หมุนอยู่กับที่
+- `เลี้ยวขวา ความเร็ว %` หมุนอยู่กับที่
+- `หยุดมอเตอร์`
+- `เดินหน้า ความเร็ว % เป็นเวลา .. ms`
+- `ขับ ล้อซ้าย % ล้อขวา %` รับค่า -100 ถึง 100 ติดลบคือถอยหลัง (tank drive)
+
+### ขั้นสูง
+- `ขับ [ล้อ] ความเร็ว %` รับค่า -100 ถึง 100
+- `หมุน [ล้อ] [ทิศทาง] ความเร็ว %` สั่งทีละล้อ แบบเลือกทิศจาก dropdown
+- `ตั้งกำลังขั้นต่ำ %` ชดเชยจุดที่มอเตอร์ยังไม่ออกตัว
+- `หยุด [ล้อ]`
+- `เบรกมอเตอร์`
+- `ตั้งความถี่ PWM .. Hz`
+
+## License
+
+MIT
+
+## Supported targets
 
 * for PXT/microbit
-<script src="https://makecode.com/gh-pages-embed.js"></script><script>makeCodeRender("{{ site.makecode.home_url }}", "{{ site.github.owner_name }}/{{ site.github.repository_name }}");</script>
