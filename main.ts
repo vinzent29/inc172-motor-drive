@@ -1,29 +1,36 @@
 /**
- * L298N Motor Driver blocks สำหรับ micro:bit + Sensor:bit
+ * L298N Motor Driver blocks for micro:bit + Sensor:bit
  *
- * เงื่อนไขการต่อวงจร: ใส่ jumper ค้างไว้ที่ ENA / ENB
- * จึงคุมความเร็วด้วย PWM ที่ขา IN1-IN4 โดยตรง
+ * Wiring assumption: jumpers left in place on ENA / ENB,
+ * so speed is controlled by PWM directly on IN1-IN4.
  *
- *   IN1 / IN2  ->  Motor A (ล้อซ้าย)
- *   IN3 / IN4  ->  Motor B (ล้อขวา)
+ *   IN1 / IN2  ->  Motor A (left wheel)
+ *   IN3 / IN4  ->  Motor B (right wheel)
  */
 
 enum MotorSide {
-    //% block="ล้อซ้าย"
+    //% block="left wheel"
+    //% block.loc.th="ล้อซ้าย"
     Left = 0,
-    //% block="ล้อขวา"
+    //% block="right wheel"
+    //% block.loc.th="ล้อขวา"
     Right = 1
 }
 
 enum MotorDir {
-    //% block="เดินหน้า"
+    //% block="forward"
+    //% block.loc.th="เดินหน้า"
     Forward = 0,
-    //% block="ถอยหลัง"
+    //% block="backward"
+    //% block.loc.th="ถอยหลัง"
     Backward = 1
 }
 
-//% weight=100 color=#E63946 icon="\uf1b9" block="มอเตอร์ L298"
-//% groups="['เริ่มต้น', 'ขับเคลื่อน', 'ขั้นสูง']"
+//% weight=100 color=#E63946 icon="\uf1b9"
+//% block="L298 Motor"
+//% block.loc.th="มอเตอร์ L298"
+//% groups="['Setup', 'Drive', 'Advanced']"
+//% groups.loc.th="['เริ่มต้น', 'ขับเคลื่อน', 'ขั้นสูง']"
 namespace l298 {
 
     let pinIN1 = DigitalPin.P13
@@ -33,12 +40,11 @@ namespace l298 {
     let pwmPeriodUs = 1000
     let minPower = 0
 
-    // ---------- ฟังก์ชันภายใน (ไม่กลายเป็นบล็อก) ----------
+    // ---------- internal helpers (not exposed as blocks) ----------
 
     function toPwm(percent: number): number {
         let p = Math.constrain(percent, 0, 100)
         if (p > 0 && minPower > 0) {
-            // ยกช่วงล่างขึ้นให้พ้นจุดที่มอเตอร์ยังไม่ออกตัว
             p = Math.map(p, 0, 100, minPower, 100)
         }
         return Math.round(Math.map(p, 0, 100, 0, 1023))
@@ -55,25 +61,27 @@ namespace l298 {
         pins.digitalWritePin(pinB, 0)
     }
 
-    // ---------- กลุ่ม: เริ่มต้น ----------
+    // ---------- group: Setup ----------
 
     /**
-     * กำหนดขาที่ต่อกับ L298 แล้วหยุดมอเตอร์ทั้งสองข้าง
-     * ให้วางบล็อกนี้ไว้ใน "on start" เสมอ
-     * @param in1 ขาที่ต่อกับ IN1
-     * @param in2 ขาที่ต่อกับ IN2
-     * @param in3 ขาที่ต่อกับ IN3
-     * @param in4 ขาที่ต่อกับ IN4
+     * Set the pins wired to the L298 module and stop both motors.
+     * Always place this block inside "on start".
+     * @param in1 pin wired to IN1
+     * @param in2 pin wired to IN2
+     * @param in3 pin wired to IN3
+     * @param in4 pin wired to IN4
      */
     //% blockId=l298_setup
-    //% block="ตั้งค่ามอเตอร์ IN1 %in1 IN2 %in2 IN3 %in3 IN4 %in4"
+    //% block="set motor pins IN1 %in1 IN2 %in2 IN3 %in3 IN4 %in4"
+    //% block.loc.th="ตั้งค่ามอเตอร์ IN1 %in1 IN2 %in2 IN3 %in3 IN4 %in4"
+    //% jsdoc.loc.th="กำหนดขาที่ต่อกับ L298 แล้วหยุดมอเตอร์ทั้งสองข้าง ให้วางบล็อกนี้ไว้ใน on start เสมอ"
     //% in1.defl=DigitalPin.P13
     //% in2.defl=DigitalPin.P14
     //% in3.defl=DigitalPin.P15
     //% in4.defl=DigitalPin.P16
     //% inlineInputMode=external
     //% weight=100 blockGap=8
-    //% group="เริ่มต้น"
+    //% group="Setup"
     export function setup(in1: DigitalPin, in2: DigitalPin, in3: DigitalPin, in4: DigitalPin): void {
         pinIN1 = in1
         pinIN2 = in2
@@ -82,87 +90,99 @@ namespace l298 {
         stop()
     }
 
-    // ---------- กลุ่ม: ขับเคลื่อน ----------
+    // ---------- group: Drive ----------
 
     /**
-     * เดินหน้าทั้งสองล้อ
-     * @param speed ความเร็ว 0-100 เปอร์เซ็นต์
+     * Drive both wheels forward.
+     * @param speed speed from 0 to 100 percent
      */
     //% blockId=l298_forward
-    //% block="เดินหน้า ความเร็ว %speed \\%"
+    //% block="drive forward at %speed \\%"
+    //% block.loc.th="เดินหน้า ความเร็ว %speed \\%"
+    //% jsdoc.loc.th="เดินหน้าทั้งสองล้อ"
     //% speed.min=0 speed.max=100 speed.defl=60
     //% weight=95
-    //% group="ขับเคลื่อน"
+    //% group="Drive"
     export function forward(speed: number): void {
         runMotor(MotorSide.Left, MotorDir.Forward, speed)
         runMotor(MotorSide.Right, MotorDir.Forward, speed)
     }
 
     /**
-     * ถอยหลังทั้งสองล้อ
-     * @param speed ความเร็ว 0-100 เปอร์เซ็นต์
+     * Drive both wheels backward.
+     * @param speed speed from 0 to 100 percent
      */
     //% blockId=l298_backward
-    //% block="ถอยหลัง ความเร็ว %speed \\%"
+    //% block="drive backward at %speed \\%"
+    //% block.loc.th="ถอยหลัง ความเร็ว %speed \\%"
+    //% jsdoc.loc.th="ถอยหลังทั้งสองล้อ"
     //% speed.min=0 speed.max=100 speed.defl=60
     //% weight=90
-    //% group="ขับเคลื่อน"
+    //% group="Drive"
     export function backward(speed: number): void {
         runMotor(MotorSide.Left, MotorDir.Backward, speed)
         runMotor(MotorSide.Right, MotorDir.Backward, speed)
     }
 
     /**
-     * เลี้ยวซ้ายแบบหมุนอยู่กับที่ (ล้อซ้ายถอย ล้อขวาเดินหน้า)
-     * @param speed ความเร็ว 0-100 เปอร์เซ็นต์
+     * Spin left on the spot: left wheel backward, right wheel forward.
+     * @param speed speed from 0 to 100 percent
      */
     //% blockId=l298_turn_left
-    //% block="เลี้ยวซ้าย ความเร็ว %speed \\%"
+    //% block="turn left at %speed \\%"
+    //% block.loc.th="เลี้ยวซ้าย ความเร็ว %speed \\%"
+    //% jsdoc.loc.th="เลี้ยวซ้ายแบบหมุนอยู่กับที่ (ล้อซ้ายถอย ล้อขวาเดินหน้า)"
     //% speed.min=0 speed.max=100 speed.defl=60
     //% weight=85
-    //% group="ขับเคลื่อน"
+    //% group="Drive"
     export function turnLeft(speed: number): void {
         runMotor(MotorSide.Left, MotorDir.Backward, speed)
         runMotor(MotorSide.Right, MotorDir.Forward, speed)
     }
 
     /**
-     * เลี้ยวขวาแบบหมุนอยู่กับที่ (ล้อซ้ายเดินหน้า ล้อขวาถอย)
-     * @param speed ความเร็ว 0-100 เปอร์เซ็นต์
+     * Spin right on the spot: left wheel forward, right wheel backward.
+     * @param speed speed from 0 to 100 percent
      */
     //% blockId=l298_turn_right
-    //% block="เลี้ยวขวา ความเร็ว %speed \\%"
+    //% block="turn right at %speed \\%"
+    //% block.loc.th="เลี้ยวขวา ความเร็ว %speed \\%"
+    //% jsdoc.loc.th="เลี้ยวขวาแบบหมุนอยู่กับที่ (ล้อซ้ายเดินหน้า ล้อขวาถอย)"
     //% speed.min=0 speed.max=100 speed.defl=60
     //% weight=80
-    //% group="ขับเคลื่อน"
+    //% group="Drive"
     export function turnRight(speed: number): void {
         runMotor(MotorSide.Left, MotorDir.Forward, speed)
         runMotor(MotorSide.Right, MotorDir.Backward, speed)
     }
 
     /**
-     * หยุดมอเตอร์ทั้งสองข้าง (ปล่อยให้ไหลอิสระ)
+     * Stop both motors and let them coast.
      */
     //% blockId=l298_stop
-    //% block="หยุดมอเตอร์"
-    //% weight=75 blockGap=24
-    //% group="ขับเคลื่อน"
+    //% block="stop motors"
+    //% block.loc.th="หยุดมอเตอร์"
+    //% jsdoc.loc.th="หยุดมอเตอร์ทั้งสองข้าง (ปล่อยให้ไหลอิสระ)"
+    //% weight=75
+    //% group="Drive"
     export function stop(): void {
         coast(pinIN1, pinIN2)
         coast(pinIN3, pinIN4)
     }
 
     /**
-     * เดินหน้าตามเวลาที่กำหนด แล้วหยุดเอง
-     * @param speed ความเร็ว 0-100 เปอร์เซ็นต์
-     * @param ms เวลาเป็นมิลลิวินาที
+     * Drive forward for a set time, then stop automatically.
+     * @param speed speed from 0 to 100 percent
+     * @param ms duration in milliseconds
      */
     //% blockId=l298_forward_for
-    //% block="เดินหน้า ความเร็ว %speed \\% เป็นเวลา %ms ms"
+    //% block="drive forward at %speed \\% for %ms ms"
+    //% block.loc.th="เดินหน้า ความเร็ว %speed \\% เป็นเวลา %ms ms"
+    //% jsdoc.loc.th="เดินหน้าตามเวลาที่กำหนด แล้วหยุดเอง"
     //% speed.min=0 speed.max=100 speed.defl=60
     //% ms.shadow=timePicker ms.defl=1000
     //% weight=70
-    //% group="ขับเคลื่อน"
+    //% group="Drive"
     export function forwardFor(speed: number, ms: number): void {
         forward(speed)
         basic.pause(ms)
@@ -170,35 +190,39 @@ namespace l298 {
     }
 
     /**
-     * ขับสองล้อพร้อมกัน กำหนดความเร็วแยกกันได้
-     * ค่าบวก = เดินหน้า, ค่าลบ = ถอยหลัง, 0 = หยุดล้อนั้น
-     * @param left ความเร็วล้อซ้าย -100 ถึง 100
-     * @param right ความเร็วล้อขวา -100 ถึง 100
+     * Drive both wheels with independent speeds.
+     * Positive = forward, negative = backward, 0 = stop that wheel.
+     * @param left left wheel speed from -100 to 100
+     * @param right right wheel speed from -100 to 100
      */
     //% blockId=l298_tank
-    //% block="ขับ ล้อซ้าย %left \\% ล้อขวา %right \\%"
+    //% block="drive left wheel %left \\% right wheel %right \\%"
+    //% block.loc.th="ขับ ล้อซ้าย %left \\% ล้อขวา %right \\%"
+    //% jsdoc.loc.th="ขับสองล้อพร้อมกัน กำหนดความเร็วแยกกันได้ ค่าบวกคือเดินหน้า ค่าลบคือถอยหลัง 0 คือหยุดล้อนั้น"
     //% left.min=-100 left.max=100 left.defl=60
     //% right.min=-100 right.max=100 right.defl=60
     //% inlineInputMode=inline
     //% weight=65 blockGap=24
-    //% group="ขับเคลื่อน"
+    //% group="Drive"
     export function tank(left: number, right: number): void {
         wheel(MotorSide.Left, left)
         wheel(MotorSide.Right, right)
     }
 
-    // ---------- กลุ่ม: ขั้นสูง ----------
+    // ---------- group: Advanced ----------
 
     /**
-     * ขับล้อเดียว ค่าบวก = เดินหน้า, ค่าลบ = ถอยหลัง, 0 = หยุด
-     * @param side เลือกล้อ
-     * @param speed ความเร็ว -100 ถึง 100
+     * Drive one wheel. Positive = forward, negative = backward, 0 = stop.
+     * @param side which wheel
+     * @param speed speed from -100 to 100
      */
     //% blockId=l298_wheel
-    //% block="ขับ %side ความเร็ว %speed \\%"
+    //% block="drive %side at %speed \\%"
+    //% block.loc.th="ขับ %side ความเร็ว %speed \\%"
+    //% jsdoc.loc.th="ขับล้อเดียว ค่าบวกคือเดินหน้า ค่าลบคือถอยหลัง 0 คือหยุด"
     //% speed.min=-100 speed.max=100 speed.defl=60
     //% weight=62
-    //% group="ขั้นสูง"
+    //% group="Advanced"
     export function wheel(side: MotorSide, speed: number): void {
         let s = Math.constrain(speed, -100, 100)
         if (s > 0) {
@@ -211,30 +235,18 @@ namespace l298 {
     }
 
     /**
-     * ตั้งกำลังขั้นต่ำที่มอเตอร์เริ่มออกตัวได้ (0 = ปิดการชดเชย)
-     * ถ้าสั่งความเร็ว 10 แล้วรถไม่ขยับ ให้ลองตั้งค่านี้ที่ 35-45
-     * @param percent กำลังขั้นต่ำ 0-80 เปอร์เซ็นต์
-     */
-    //% blockId=l298_set_min_power
-    //% block="ตั้งกำลังขั้นต่ำ %percent \\%"
-    //% percent.min=0 percent.max=80 percent.defl=35
-    //% weight=48
-    //% group="ขั้นสูง"
-    export function setMinPower(percent: number): void {
-        minPower = Math.constrain(percent, 0, 80)
-    }
-
-    /**
-     * สั่งมอเตอร์ทีละล้อ
-     * @param side เลือกล้อ
-     * @param dir ทิศทาง
-     * @param speed ความเร็ว 0-100 เปอร์เซ็นต์
+     * Run one wheel with an explicit direction.
+     * @param side which wheel
+     * @param dir direction
+     * @param speed speed from 0 to 100 percent
      */
     //% blockId=l298_run_motor
-    //% block="หมุน %side %dir ความเร็ว %speed \\%"
+    //% block="run %side %dir at %speed \\%"
+    //% block.loc.th="หมุน %side %dir ความเร็ว %speed \\%"
+    //% jsdoc.loc.th="สั่งมอเตอร์ทีละล้อ โดยเลือกทิศทางจาก dropdown"
     //% speed.min=0 speed.max=100 speed.defl=60
     //% weight=60
-    //% group="ขั้นสูง"
+    //% group="Advanced"
     export function runMotor(side: MotorSide, dir: MotorDir, speed: number): void {
         let a = side == MotorSide.Left ? pinIN1 : pinIN3
         let b = side == MotorSide.Left ? pinIN2 : pinIN4
@@ -246,13 +258,15 @@ namespace l298 {
     }
 
     /**
-     * หยุดมอเตอร์ทีละล้อ
-     * @param side เลือกล้อ
+     * Stop one wheel.
+     * @param side which wheel
      */
     //% blockId=l298_stop_side
-    //% block="หยุด %side"
+    //% block="stop %side"
+    //% block.loc.th="หยุด %side"
+    //% jsdoc.loc.th="หยุดมอเตอร์ทีละล้อ"
     //% weight=55
-    //% group="ขั้นสูง"
+    //% group="Advanced"
     export function stopSide(side: MotorSide): void {
         if (side == MotorSide.Left) {
             coast(pinIN1, pinIN2)
@@ -262,13 +276,15 @@ namespace l298 {
     }
 
     /**
-     * เบรกมอเตอร์ทั้งสองข้าง (ดึงขา IN ทั้งคู่ขึ้น HIGH)
-     * หยุดเร็วกว่าบล็อก "หยุดมอเตอร์" แต่กระชากกว่า
+     * Brake both motors by pulling both IN pins HIGH.
+     * Stops faster than the coast-based stop block, but more abruptly.
      */
     //% blockId=l298_brake
-    //% block="เบรกมอเตอร์"
+    //% block="brake motors"
+    //% block.loc.th="เบรกมอเตอร์"
+    //% jsdoc.loc.th="เบรกมอเตอร์ทั้งสองข้าง หยุดเร็วกว่าบล็อกหยุดมอเตอร์ แต่กระชากกว่า"
     //% weight=50
-    //% group="ขั้นสูง"
+    //% group="Advanced"
     export function brake(): void {
         pins.digitalWritePin(pinIN1, 1)
         pins.digitalWritePin(pinIN2, 1)
@@ -277,15 +293,33 @@ namespace l298 {
     }
 
     /**
-     * ตั้งความถี่ PWM ค่าเริ่มต้นคือ 1000 Hz
-     * L298 เป็น BJT bridge ไม่ควรเกิน 2000 Hz
-     * @param hz ความถี่เป็น Hz
+     * Set the minimum power at which the motors actually start moving.
+     * Use 0 to disable the compensation.
+     * @param percent minimum power from 0 to 80 percent
+     */
+    //% blockId=l298_set_min_power
+    //% block="set minimum power to %percent \\%"
+    //% block.loc.th="ตั้งกำลังขั้นต่ำ %percent \\%"
+    //% jsdoc.loc.th="ตั้งกำลังขั้นต่ำที่มอเตอร์เริ่มออกตัวได้ ถ้าสั่งความเร็วน้อย ๆ แล้วรถไม่ขยับ ให้ลองตั้งที่ 35-45"
+    //% percent.min=0 percent.max=80 percent.defl=35
+    //% weight=48
+    //% group="Advanced"
+    export function setMinPower(percent: number): void {
+        minPower = Math.constrain(percent, 0, 80)
+    }
+
+    /**
+     * Set the PWM frequency. Default is 1000 Hz.
+     * The L298 is a BJT bridge, so avoid going above 2000 Hz.
+     * @param hz frequency in Hz
      */
     //% blockId=l298_set_frequency
-    //% block="ตั้งความถี่ PWM %hz Hz"
+    //% block="set PWM frequency to %hz Hz"
+    //% block.loc.th="ตั้งความถี่ PWM %hz Hz"
+    //% jsdoc.loc.th="ตั้งความถี่ PWM ค่าเริ่มต้นคือ 1000 Hz ไม่ควรเกิน 2000 Hz"
     //% hz.min=100 hz.max=2000 hz.defl=1000
     //% weight=45
-    //% group="ขั้นสูง"
+    //% group="Advanced"
     export function setFrequency(hz: number): void {
         pwmPeriodUs = Math.round(1000000 / Math.constrain(hz, 100, 2000))
     }
